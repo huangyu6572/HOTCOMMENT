@@ -1,0 +1,59 @@
+# HotCommentHub 全局配置
+# ⚠️ YAML 格式，缩进必须用空格
+
+# ===== 人设 =====
+persona: "foodie"  # foodie / gadget_reviewer / beauty_blogger / travel_expert
+
+# ===== 搜索关键词（覆盖人设默认值） =====
+keyword: ""  # 留空则用人设 search_keywords
+
+# ===== 搜索渠道 =====
+channels:
+  enabled:
+    - weibo
+    - zhihu
+    - bilibili
+    - xiaohongshu
+    - douyin
+    - toutiao
+    - smzdm
+  # - twitter   # 海外渠道默认关闭
+  # - reddit
+  max_topics_per_channel: 10
+
+# ===== 内容生成 =====
+generation:
+  drafts_count: 3  # 每次生成 2-3 篇
+  angles:
+    - event_report
+    - opinion
+    - guide
+
+# ===== 发布平台 =====
+publish:
+  platforms:
+    - xiaohongshu
+  # - weibo
+  # - bilibili
+  # - zhihu
+  max_per_day: 4
+  min_interval_minutes: 120
+
+# ===== 审阅模式 =====
+review:
+  mode: "always"  # always(人工审阅) / auto(自动发布)
+
+# ===== 调度 =====
+schedule:
+  enabled: false  # 改为 true 启用定时
+  cron: "0 8,14,20 * * *"
+
+# ===== 通知 =====
+notifications:
+  enabled: false
+  webhook_url: ""
+
+# ===== AI =====
+ai:
+  provider: "deepseek"
+  model: "deepseek-chat"

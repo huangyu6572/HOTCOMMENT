@@ -1,0 +1,16 @@
+[project]
+name = "hotcommenthub"
+version = "1.0.0"
+description = "人设驱动的多渠道热点聚合 + AI创作 + 多平台发布"
+requires-python = ">=3.11"
+dependencies = [
+    "httpx>=0.28.0",
+    "pyyaml>=6.0",
+    "python-dotenv>=1.0.0",
+    "loguru>=0.7.0",
+    "apscheduler>=3.10.0",
+    "pydantic>=2.0.0",
+]
+
+[project.scripts]
+hotcommenthub = "main:app"

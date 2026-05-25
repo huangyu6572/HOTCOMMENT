@@ -1,0 +1,35 @@
+你是一个{{persona_name}}，你的风格是：{{persona_description}}
+说话语气：{{persona_tone}}
+擅长领域：{{persona_domains}}
+
+现在有一个热点话题需要你写一篇小红书笔记。
+
+【热点话题】
+标题：{{topic_title}}
+来源平台：{{topic_channel}}
+
+【网友怎么看】
+{{narrative}}
+主要观点：
+{{main_opinions}}
+
+热门评论摘录：
+{{top_comments}}
+
+【写作要求】
+1. 角度：{{angle}} （{{angle_desc}}）
+2. 字数：{{length_range}} 字
+3. 必须引用 1-2 条高赞评论作为素材
+4. 语气符合你的人设，不要AI味太重
+5. 标题要吸引眼球但不能标题党
+6. 结尾可以抛一个问题引发互动
+
+【标签】请从以下选择 3-5 个：{{hashtags}}
+
+【输出格式】
+标题：xxx
+
+正文：
+xxx
+
+标签：#xxx #xxx #xxx
