@@ -41,72 +41,97 @@ python main.py personas                # List personas
 
 ### XHS Publish Steps (the only reliable path)
 
-Use a fixed session name (e.g. `xhs_pub`) to retain login state. Execute these 5 `opencli` commands in order:
+Use a fixed session name (e.g. `xhs_pub`) to retain login state. Execute these 6 `opencli` commands in order:
 
 ```bash
 SESSION="xhs_pub"
 COVER="D:\code\HotCommentHub\data\cover_xxx.jpg"   # absolute path
 TITLE="your title ≤20 chars"
-BODY_HTML="<p>paragraph 1</p><p>paragraph 2</p>..."  # innerHTML-safe
 
-# 1. Open publish page
+# 1. Open publish page (force image tab via URL param)
 opencli browser $SESSION open "https://creator.xiaohongshu.com/publish/publish?from=tab_switch&target=image"
 
-# 2. Upload cover image (ref=84 is the file input; re-check with `state` if DOM changes)
-opencli browser $SESSION upload 84 "$COVER"
+# 2. Wait for DOM ready + find file input ref (ref varies, always re-detect!)
+opencli browser $SESSION eval "var els=document.querySelectorAll('input'); var r=[]; for(var i=0;i<els.length;i++){r.push(i+':'+els[i].type+':'+(els[i].accept||'none'))}; JSON.stringify(r)"
+# → find the index of "file:.jpg,.jpeg,.png,.webp", then cross-check with `state` for the DOM ref number
 
-# 3. Fill title (--name targets the placeholder text)
+# 3. Upload cover image (use ref number from step 2)
+opencli browser $SESSION upload <REF> "$COVER"
+
+# 4. Fill title (--name targets the placeholder text)
 opencli browser $SESSION fill --name "填写标题会有更多赞哦" "$TITLE"
 
-# 4. Fill body — MUST use eval + innerHTML (opencli fill truncates contenteditable)
-opencli browser $SESSION eval "var d=document.querySelector('[contenteditable=true]'); d.innerHTML='$BODY_HTML'.replace(/\\n/g,'<br>'); d.dispatchEvent(new Event('input',{bubbles:true})); 'ok'"
+# 5. Fill body — MUST use eval + innerHTML, use <br> not \n for line breaks
+opencli browser $SESSION eval "var d=document.querySelector('[contenteditable=true]'); var t='line1<br><br>line2<br><br>line3...'; d.innerHTML=t; d.dispatchEvent(new Event('input',{bubbles:true})); 'ok '+d.innerText.length"
+# NOTE: embed the full HTML text directly (JS var), do NOT use shell variable substitution $BODY_HTML — it breaks on special chars
 
-# 5. Publish — _onPublish is the ONLY way (click/dispatchEvent don't work on Vue Web Component)
-opencli browser $SESSION eval "var b=document.querySelector('xhs-publish-btn'); b._onPublish(); 'called'"
+# 6. Publish — _onPublish is the ONLY way
+opencli browser $SESSION eval "var b=document.querySelector('xhs-publish-btn'); if(b && typeof b._onPublish === 'function') { b._onPublish(); 'called' } else { 'fail: '+typeof b }"
 
-# Verify
+# 7. Verify (wait 5s then check URL)
+Start-Sleep -Seconds 5
 opencli browser $SESSION eval "window.location.href"
-# → must contain "publish/success"
+# → must contain "published=true" (新版) or "publish/success" (旧版)
 ```
 
-### Real Example: 蜜雪冰城 AB货 (2026-05-26, verified success)
+### Publish Flow Gotchas (from real runs)
+
+| # | Problem | Root Cause | Fix |
+|---|---------|------------|-----|
+| 1 | Page auto-redirects to `/new/note-manager` | Session already logged in, `open` sometimes lands on manager | Just `open` again, second time sticks |
+| 2 | `eval "input[type=file]"` returns `not ready` | Page not fully rendered yet | Use `querySelectorAll('input')` loop + `JSON.stringify` to inspect all inputs at once |
+| 3 | file input ref is NOT always 84 | DOM structure changes between sessions/versions | Always re-detect: `eval` to find file input index → `state` to get ref number |
+| 4 | `$BODY_HTML` shell variable breaks on `'` `"` `<` etc. | Shell interpolation conflicts with HTML/JS syntax | Embed body text directly in JS `var t='...'` inside eval, avoid shell vars for body |
+| 5 | `\n` in shell string becomes literal backslash-n | PowerShell escaping | Use `<br>` directly in JS string literal, never `replace(/\n/g,'<br>')` |
+| 6 | `_onPublish` reports `called` but page may still be processing | Async publish, redirect takes 2-5s | Always `Start-Sleep -Seconds 5` before verifying URL |
+| 7 | Cover script generates `.jpg` but filename doesn't auto-match | `--output` doesn't add extension consistently | Check actual output path from script stdout, use that exact path for upload |
+
+### Real Example: 美食摄影教程 (2026-05-26, verified success — refined flow)
 
 ```bash
-SESSION="xhs_whd"
-TITLE="流量艺人卖惨为何越来越不好使"
+SESSION="xhs_pub"
+TITLE="春夏美食怎么拍出治愈感"
 
-# 1. open
-opencli browser xhs_whd open "https://creator.xiaohongshu.com/publish/publish?from=tab_switch&target=image"
+# 1. open (first try may redirect to /note-manager, just retry)
+opencli browser xhs_pub open "https://creator.xiaohongshu.com/publish/publish?from=tab_switch&target=image"
 
-# 2. upload cover
-opencli browser xhs_whd state        # find ref for <input type=file> → [84]
-opencli browser xhs_whd upload 84 "D:\code\HotCommentHub\data\cover_whd.jpg"
+# 2. detect file input (always re-detect!)
+opencli browser xhs_pub eval "var els=document.querySelectorAll('input'); var r=[]; for(var i=0;i<els.length;i++){r.push(i+':'+els[i].type+':'+(els[i].accept||'none'))}; JSON.stringify(r)"
+# response: ["0:file:.jpg,.jpeg,.png,.webp"] → index 0, cross-check with `state` → ref [84]
 
-# 3. title
-opencli browser xhs_whd fill --name "填写标题会有更多赞哦" "$TITLE"
+# 3. upload cover
+opencli browser xhs_pub upload 84 "D:\code\HotCommentHub\data\cover_food_photo.jpg"
 
-# 4. body (402 chars, multi-paragraph, conversational)
-opencli browser xhs_whd eval "var d=document.querySelector('[contenteditable=true]'); var t='王鹤棣又上热搜了。<br>这次不是因为新剧，<br>而是因为客栈录制期间不开心。<br><br>紧接着掉粉、卖惨翻车、回旋镖，<br>一套组合拳下来，<br>舆论场直接炸了。<br><br>...'; d.innerHTML=t; d.dispatchEvent(new Event('input',{bubbles:true})); 'ok '+d.innerText.length"
-# response: ok 402
+# 4. title (wait for image to settle)
+opencli browser xhs_pub fill --name "填写标题会有更多赞哦" "$TITLE"
 
-# 5. publish
-opencli browser xhs_whd eval "var b=document.querySelector('xhs-publish-btn'); b._onPublish(); 'called'"
+# 5. body (embedded in JS var, no shell interpolation)
+opencli browser xhs_pub eval "var d=document.querySelector('[contenteditable=true]'); var t='春夏的食物是有情绪的。<br><br>一颗刚洗过的杨梅...'; d.innerHTML=t; d.dispatchEvent(new Event('input',{bubbles:true})); 'ok '+d.innerText.length"
+# response: ok 639
+
+# 6. publish with fallback check
+opencli browser xhs_pub eval "var b=document.querySelector('xhs-publish-btn'); if(b && typeof b._onPublish === 'function') { b._onPublish(); 'called' } else { 'fail: '+typeof b }"
 # response: called
 
-# 6. verify
-opencli browser xhs_whd eval "window.location.href"
-# response: https://creator.xiaohongshu.com/publish/success?source&bind_status=not_bind...
+# 7. verify (5s wait)
+Start-Sleep -Seconds 5
+opencli browser xhs_pub eval "window.location.href"
+# response: https://creator.xiaohongshu.com/publish/publish?source=&published=true
 ```
 
 ### Critical Do's and Don'ts
 
 | Do | Don't |
 |----|-------|
-| Use `eval` + `innerHTML` for body | `opencli fill` on contenteditable (truncates) |
-| Call `b._onPublish()` via `eval` | `click()` / `dispatchEvent()` on publish btn |
+| Use `eval` + `innerHTML` for body content | `opencli fill` on contenteditable (truncates) |
+| Call `b._onPublish()` via `eval` with fallback check | `click()` / `dispatchEvent()` on publish btn |
 | Use a fixed session name (reuses login) | New session every time (DOM may not render) |
-| Verify with `eval "window.location.href"` | Trust `main.py publish` (Python pipeline unstable) |
-| `state` to find refs, then `upload`/`fill` by ref | Rely on `--css`/`--name` selectors (inconsistent) |
+| Verify with `eval "window.location.href"` after 5s wait | Trust `main.py publish` (Python pipeline unstable) |
+| **Re-detect file input ref every publish** (eval→state) | Hardcode ref=84 (changes between sessions) |
+| **Embed body as JS var directly in eval** | Use shell `$VAR` substitution for body (escaping hell) |
+| **Use `<br>` directly, no `\n`** | Use `replace(/\n/g,'<br>')` (PowerShell mangles `\n`) |
+| **If page redirects to /note-manager, `open` again** | Give up after first `open` lands on wrong page |
+| Copilot writes content → CLI publish (reliable) | DeepSeek API title-body mismatch → manual fix |
 
 ### Two Search Modes
 
@@ -235,3 +260,6 @@ HotCommentHub/
 5. **Multi-platform publish**: `PublishEngine` has registered Weibo/Bilibili/Zhihu publishers but they are empty shells — fill them in.
 6. **Draft management**: `-d 1` picks latest only. Add a list-picker to `python main.py review`.
 7. **Cover script standardization**: All cover-gen scripts live under `scripts/`; no one-off scripts at project root.
+8. **Publish retry on redirect**: `open` sometimes lands on `/note-manager` instead of publish page — auto-detect URL and retry `open` once.
+9. **File input ref caching**: ref number changes between sessions, always re-detect. Consider a `detect_file_ref()` helper that combines eval+state parsing.
+10. **Body content escaping**: shell variable `$BODY_HTML` breaks on quotes/angle brackets. Standardize on JS-embedded `var t='...'` pattern — copilot should generate body with `<br>` already in place.
