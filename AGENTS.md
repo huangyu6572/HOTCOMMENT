@@ -166,6 +166,18 @@ main.py / run_prod.py
 - **Cover image**: must exist at `data/cover*.jpg` before publishing. Generate with `scripts/make_cover.py` or place manually.
 - **XHS tags**: currently skipped — XHS topic tags require clicking from a recommendation list, not yet automated.
 
+### DeepSeek API: Title-Body Mismatch
+
+- Problem: run_prod.py calls DeepSeek API via ContentGenerator. Model frequently generates correct title but body belongs to different topic (e.g. title 618 but body about daocheng).
+- Workaround: skip AI pipeline, let Copilot write content directly, then CLI publish.
+- Always verify title matches body.
+
+### persona search_keywords Matching
+
+- run_prod.py -p <persona> -k <kw> uses persona search_keywords to match hot-list titles, NOT direct search with -k.
+- Hot words not matching (e.g. hema, 618, chenkeming) must be added to persona YAML search_keywords.
+- Edit YAML with Python, NOT PowerShell replace (pollutes file).
+
 ## Agent Rules
 
 - **NEVER create throwaway scripts.** If existing tooling (e.g., `run_prod.py`) lacks a feature, extend it in-place rather than writing one-off scripts. All changes should compound in the canonical files.
