@@ -22,7 +22,7 @@ from .search.toutiao_searcher import ToutiaoSearcher
 from .search.twitter_searcher import TwitterSearcher
 from .search.reddit_searcher import RedditSearcher
 from .search.smzdm_searcher import SmzdmSearcher
-from .search.base import Topic
+from .search.base import Topic, Comment
 from .ai.comment_analyzer import CommentAnalyzer
 from .ai.content_generator import ContentGenerator
 from .ai.quality_checker import QualityChecker
@@ -142,6 +142,14 @@ class Orchestrator:
         logger.info("🧠 [3/4] AI 深度分析评论中...")
         analyses = {}
         for topic in top_topics:
+            # 无评论时用话题热度构造基础分析数据，让 AI 仍有上下文
+            if not topic.comments:
+                logger.info(f"  无评论数据，用热度值构造分析上下文: {topic.title[:40]}")
+                topic.comments = [
+                    Comment(content=f"[热度] 该话题热度值为 {topic.hot_score}", likes=0),
+                    Comment(content=f"[来源] 来自 {topic.channel} 平台", likes=0),
+                    Comment(content=f"[摘要] {topic.title}", likes=0),
+                ]
             analysis = self.comment_analyzer.analyze(
                 topic_title=topic.title,
                 topic_channel=topic.channel,
@@ -158,7 +166,9 @@ class Orchestrator:
         all_drafts = []
         for topic in top_topics[:3]:  # 最多 3 个话题
             analysis = analyses.get(topic.title, {})
-            if not analysis.get("main_opinions"):
+            # 只要 AI 返回了结果（有 narrative 或 main_opinions 或 controversy），都尝试生成
+            if not analysis.get("main_opinions") and not analysis.get("narrative") and not analysis.get("controversy"):
+                logger.warning(f"  跳过无分析结果的话题: {topic.title[:40]}")
                 continue
 
             drafts = self.content_generator.generate(

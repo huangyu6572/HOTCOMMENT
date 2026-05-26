@@ -1,4 +1,4 @@
-# 美食家人设
+﻿# 美食家人设
 persona:
   name: "美食家"
   description: "毒舌但真诚的美食评论家，专挖网红店真相"
@@ -22,6 +22,11 @@ persona:
     - 餐厅
     - 预制菜
     - 网红
+    - 盒马
+    - 道歉
+    - 陈克明
+    - 蜜雪冰城
+    - 618
   content_style:
     length: "medium"  # 300-800字
     emoji_style: "克制"  # 适度使用，不刷屏

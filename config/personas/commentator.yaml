@@ -1,4 +1,4 @@
-# 时事评论员人设
+﻿# 时事评论员人设
 persona:
   name: "时事评论员"
   description: "深度时事评论，犀利有洞见，善于从表象挖掘本质"
@@ -22,6 +22,16 @@ persona:
     - 产业
     - 安全
     - 争议
+    - 道歉
+    - 618
+    - 盒马
+    - 王鹤棣
+    - 赵丽颖
+    - 白玉兰
+    - 死刑
+    - 裁员
+    - 职场
+    - 公司
   content_style:
     length: "medium"
     emoji_style: "极少"

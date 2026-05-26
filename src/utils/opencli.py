@@ -6,13 +6,18 @@ opencli CLI 命令封装模块
 - 超时 60s
 - 解析 JSON 输出
 - 错误统一转 Python 异常
+- 进程级锁（防止多个 opencli 并发导致 Browser Bridge 冲突）
 """
 
 import subprocess
 import json
 import time
+import threading
 from typing import Optional
 from loguru import logger
+
+# 进程级互斥锁：opencli Browser Bridge 不支持并发，必须串行
+_opencli_lock = threading.Lock()
 
 
 class OpenCLIError(Exception):
@@ -41,19 +46,23 @@ def run(
     Raises:
         OpenCLIError: 命令执行失败
     """
-    cmd = ["opencli", *args]
+    # 自动注入 --profile 确保使用正确的浏览器连接
+    cmd = ["opencli", "--profile", "hs9gg2sn", *args]
     last_error = None
 
     for attempt in range(1, retries + 1):
         try:
             logger.debug(f"[opencli] attempt {attempt}/{retries}: {' '.join(cmd)}")
-            result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                timeout=timeout,
-                encoding="utf-8",
-            )
+            # 需要持有锁才能执行，防止并发导致 Browser Bridge 冲突
+            with _opencli_lock:
+                result = subprocess.run(
+                    cmd,
+                    capture_output=True,
+                    text=True,
+                    timeout=timeout,
+                    encoding="utf-8",
+                    shell=True,
+                )
 
             if result.returncode != 0:
                 stderr = result.stderr.strip()

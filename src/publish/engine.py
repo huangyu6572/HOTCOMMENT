@@ -10,7 +10,7 @@ from pathlib import Path
 from loguru import logger
 
 from .base import BasePublisher, PublishResult
-from .xiaohongshu_publisher import XiaohongshuPublisher
+from .xhs_browser_publisher import XHSBrowserPublisher
 from .weibo_publisher import WeiboPublisher
 from .bilibili_publisher import BilibiliPublisher
 from .zhihu_publisher import ZhihuPublisher
@@ -25,7 +25,7 @@ class PublishEngine:
         self._publishers: dict[str, BasePublisher] = {}
 
         # 注册默认发布器
-        self.register(XiaohongshuPublisher())
+        self.register(XHSBrowserPublisher())
         self.register(WeiboPublisher())
         self.register(BilibiliPublisher())
         self.register(ZhihuPublisher())
@@ -56,13 +56,17 @@ class PublishEngine:
         # 读取草稿
         content = draft_path.read_text(encoding="utf-8")
 
-        # 提取标题
+        # 提取标题：优先匹配 "标题：xxx" 格式，其次 "# xxx" 格式
         title = ""
-        match = re.match(r"^标题[：:]([^\n]+)", content)
+        match = re.match(r"^标题[：:]\s*([^\n]+)", content)
         if match:
             title = match.group(1).strip()
         else:
-            title = draft_path.stem
+            match = re.match(r"^#\s+([^\n]+)", content)
+            if match:
+                title = match.group(1).strip()
+            else:
+                title = draft_path.stem
 
         # 检查今日发布数量
         today_count = self.store.count_today()
